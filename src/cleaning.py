@@ -332,3 +332,151 @@ def impute_city(df: pd.DataFrame) -> pd.DataFrame:
     df["City"] = df["City"].fillna("Unknown")
 
     return df
+
+
+def preserve_valid_outliers(df: pd.DataFrame) -> pd.DataFrame:
+    return df.copy()
+
+
+def validate_target(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    if df["Time_taken(min)"].isna().any():
+        raise ValueError(
+            "Missing values detected in Time_taken(min)."
+        )
+
+    return df
+
+
+def finalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    return df[FINAL_COLUMNS].copy()
+
+
+def verify_cleaned_data(df: pd.DataFrame) -> None:
+    print("\n--- Cleaning verification ---")
+
+    print(f"\nRows: {len(df)}")
+    print(f"Columns: {len(df.columns)}")
+
+    print("\nColumns:")
+    print(df.columns.tolist())
+
+    print("\nMissing values:")
+    print(df.isna().sum())
+
+    print("\nDuplicate rows:")
+    print(df.duplicated().sum())
+    
+    print("\nDelivery person age below 20 or above 40:")
+    print(
+        (
+            (df["Delivery_person_Age"] < 20)
+            | (df["Delivery_person_Age"] > 40)
+        ).sum()
+    )
+
+    print("\nRatings above 5:")
+    print(
+        (
+            df["Delivery_person_Ratings"] > 5
+        ).sum()
+    )
+
+    print("\nNegative GPS coordinates:")
+    print(
+        (
+            df[GPS_COLUMNS] < 0
+        ).any(axis=1).sum()
+    )
+
+    print("\nRestaurant coordinates equal to (0, 0):")
+    print(
+        (
+            (df["Restaurant_latitude"] == 0)
+            & (df["Restaurant_longitude"] == 0)
+        ).sum()
+    )
+
+    print("\nUnique City values:")
+    print(df["City"].unique())
+
+    print("\nTarget statistics:")
+    print(df["Time_taken(min)"].describe())
+
+    print("\nData types:")
+    print(df.dtypes)
+
+
+def save_cleaned_data(
+    df: pd.DataFrame,
+    file_path: Path,
+) -> None:
+    file_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    df.to_csv(
+        file_path,
+        index=False,
+    )
+
+
+def cleaning_data_pipeline() -> pd.DataFrame:
+    df = load_data(RAW_DATA_PATH)
+
+    df = clean_categorical_columns(df)
+
+    df = convert_data_types(df)
+
+    df = remove_duplicate_rows(df)
+
+    df = validate_ids(df)
+
+    df = clean_invalid_ratings(df)
+
+    df = remove_invalid_gps_coordinates(df)
+    
+    df = clip_delivery_person_age(df)
+
+    df = remove_identifiers(df)
+
+    df = encode_vehicle_condition(df)
+
+    df = compute_preparation_time(df)
+
+    df = impute_time_orderd(df)
+
+    df = impute_delivery_person_age(df)
+
+    df = impute_delivery_person_ratings(df)
+
+    df = impute_multiple_deliveries(df)
+
+    df = impute_weather_conditions(df)
+
+    df = impute_road_traffic_density(df)
+
+    df = impute_festival(df)
+
+    df = impute_city(df)
+
+    df = preserve_valid_outliers(df)
+
+    df = validate_target(df)
+
+    df = finalize_columns(df)
+
+    verify_cleaned_data(df)
+
+    save_cleaned_data(
+        df,
+        PROCESSED_DATA_PATH,
+    )
+
+    return df
+
+
+if __name__ == "__main__":
+    cleaning_data_pipeline()
