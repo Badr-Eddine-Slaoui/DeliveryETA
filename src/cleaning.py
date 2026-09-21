@@ -212,3 +212,123 @@ def encode_vehicle_condition(df: pd.DataFrame) -> pd.DataFrame:
     df["Vehicle_condition"] = df["Vehicle_condition"].astype("category")
 
     return df
+
+
+def compute_preparation_time(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    diff = (
+        df["Time_Order_picked"] - df["Time_Orderd"]
+    ).dt.total_seconds() / 60
+    diff = np.where(diff < 0, diff + 24 * 60, diff)
+
+    df["Preparation_Time_min"] = diff
+
+    return df
+
+
+def impute_time_orderd(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    median_prep_time = df["Preparation_Time_min"].median()
+
+    missing_order_time = df["Time_Orderd"].isna()
+
+    df["Time_Orderd_Was_Missing"] = missing_order_time.astype(int)
+
+    df.loc[missing_order_time, "Time_Orderd"] = (
+        df.loc[missing_order_time, "Time_Order_picked"]
+        - pd.to_timedelta(median_prep_time, unit="m")
+    )
+
+    diff = (
+        df["Time_Order_picked"] - df["Time_Orderd"]
+    ).dt.total_seconds() / 60
+    diff = np.where(diff < 0, diff + 24 * 60, diff)
+
+    df["Preparation_Time_min"] = diff
+
+    return df
+
+
+def impute_delivery_person_age(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    median_value = df["Delivery_person_Age"].median()
+
+    df["Delivery_person_Age"] = df[
+        "Delivery_person_Age"
+    ].fillna(median_value)
+
+    return df
+
+
+def impute_delivery_person_ratings(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    median_value = df["Delivery_person_Ratings"].median()
+
+    df["Delivery_person_Ratings"] = df[
+        "Delivery_person_Ratings"
+    ].fillna(median_value)
+
+    return df
+
+
+def impute_multiple_deliveries(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    median_value = df["multiple_deliveries"].median()
+
+    df["multiple_deliveries"] = df[
+        "multiple_deliveries"
+    ].fillna(median_value)
+
+    return df
+
+
+def impute_weather_conditions(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    mode_value = df["Weatherconditions"].mode(dropna=True)
+
+    if not mode_value.empty:
+        df["Weatherconditions"] = df[
+            "Weatherconditions"
+        ].fillna(mode_value.iloc[0])
+
+    return df
+
+
+def impute_road_traffic_density(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    mode_value = df["Road_traffic_density"].mode(dropna=True)
+
+    if not mode_value.empty:
+        df["Road_traffic_density"] = df[
+            "Road_traffic_density"
+        ].fillna(mode_value.iloc[0])
+
+    return df
+
+
+def impute_festival(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    mode_value = df["Festival"].mode(dropna=True)
+
+    if not mode_value.empty:
+        df["Festival"] = df["Festival"].fillna(
+            mode_value.iloc[0]
+        )
+
+    return df
+
+
+def impute_city(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    df["City"] = df["City"].fillna("Unknown")
+
+    return df
