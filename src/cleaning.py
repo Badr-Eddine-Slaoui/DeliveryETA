@@ -150,3 +150,65 @@ def convert_data_types(df: pd.DataFrame) -> pd.DataFrame:
 
 def remove_duplicate_rows(df: pd.DataFrame) -> pd.DataFrame:
     return df.drop_duplicates().copy()
+
+
+def validate_ids(df: pd.DataFrame) -> pd.DataFrame:
+    if df["ID"].duplicated().any():
+        raise ValueError("Duplicate ID values detected.")
+
+    return df.copy()
+
+
+def clean_invalid_ratings(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    df.loc[
+        df["Delivery_person_Ratings"] > 5,
+        "Delivery_person_Ratings",
+    ] = np.nan
+
+    return df
+
+
+def remove_invalid_gps_coordinates(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    restaurant_zero_coordinates = (
+        (df["Restaurant_latitude"] == 0)
+        & (df["Restaurant_longitude"] == 0)
+    )
+
+    df = df.loc[~restaurant_zero_coordinates].copy()
+
+    negative_gps = (
+        df[GPS_COLUMNS] < 0
+    ).any(axis=1)
+
+    df.loc[negative_gps, GPS_COLUMNS] = df.loc[negative_gps, GPS_COLUMNS].abs()
+
+    return df
+
+def clip_delivery_person_age(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    df["Delivery_person_Age"] = df["Delivery_person_Age"].clip(
+        lower=20,
+        upper=40,
+    )
+
+    return df
+
+
+def remove_identifiers(df: pd.DataFrame) -> pd.DataFrame:
+    return df.drop(
+        columns=IDENTIFIER_COLUMNS,
+        errors="ignore",
+    ).copy()
+
+
+def encode_vehicle_condition(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    df["Vehicle_condition"] = df["Vehicle_condition"].astype("category")
+
+    return df
