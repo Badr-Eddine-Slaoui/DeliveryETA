@@ -8,12 +8,9 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-notebooks/
 data/
-reports/
 mlruns/
 
-*.ipynb
 *.csv
 *.parquet
 *.joblib
