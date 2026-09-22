@@ -519,3 +519,234 @@ def split_features_and_target(
         )
 
     return X, y
+
+
+def final_audit(
+    df: pd.DataFrame,
+    X: pd.DataFrame,
+    y: pd.Series,
+) -> None:
+
+    if len(X) != len(y):
+        raise ValueError(
+            "X and y have different numbers of observations."
+        )
+
+    if len(df) != len(X):
+        raise ValueError(
+            "Final dataframe and X have different "
+            "numbers of observations."
+        )
+
+    if TARGET not in df.columns:
+        raise ValueError(
+            "Target is absent from final dataframe."
+        )
+
+    if TARGET in X.columns:
+        raise ValueError(
+            "Target leakage detected in X."
+        )
+
+    validate_no_raw_columns(X)
+
+    print("\n" + "=" * 70)
+    print("FINAL FEATURE ENGINEERING AUDIT")
+    print("=" * 70)
+
+    print(
+        f"Final dataframe shape : {df.shape}"
+    )
+
+    print(
+        f"X shape               : {X.shape}"
+    )
+
+    print(
+        f"y shape               : {y.shape}"
+    )
+
+    print(
+        f"Target                : {TARGET}"
+    )
+
+    print("\nEngineered features:")
+
+    for feature in NEW_FEATURES:
+        print(f"  - {feature}")
+
+    print("\nRemaining missing values:")
+
+    remaining_missing = (
+        df.isna()
+        .sum()
+        .loc[lambda s: s > 0]
+    )
+
+    if remaining_missing.empty:
+        print("  None")
+    else:
+        for column, count in remaining_missing.items():
+            print(
+                f"  - {column}: {count}"
+            )
+
+    print("\nRaw columns audit:")
+
+    print(
+        "  - GPS columns: NOT PRESENT"
+    )
+
+    print(
+        "  - Order_Date: NOT PRESENT"
+    )
+
+    print(
+        "  - Time_Orderd: NOT PRESENT"
+    )
+
+    print(
+        "  - Time_Order_picked: NOT PRESENT"
+    )
+
+    print(
+        "  - Target inside X: NO"
+    )
+
+    (
+        numeric_features,
+        categorical_features,
+        binary_features,
+    ) = get_feature_groups()
+
+    print("\nFeature groups:")
+
+    print(
+        f"  - Numeric      : "
+        f"{len(numeric_features)}"
+    )
+
+    print(
+        f"  - Categorical  : "
+        f"{len(categorical_features)}"
+    )
+
+    print(
+        f"  - Binary       : "
+        f"{len(binary_features)}"
+    )
+
+    print("=" * 70)
+
+
+def save_feature_engineered_data(
+    df: pd.DataFrame,
+    output_path: Path,
+) -> None:
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    df.to_csv(
+        output_path,
+        index=False,
+    )
+
+    print(
+        "\nFeature-engineered dataset saved to:"
+    )
+
+    print(output_path)
+
+
+def feature_engineering_pipeline() -> Tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.Series,
+]:
+
+    print("=" * 70)
+    print("STARTING FEATURE ENGINEERING PIPELINE")
+    print("=" * 70)
+
+    df = load_cleaned_data(
+        input_path=INPUT_PATH
+    )
+
+    print(
+        f"\nLoaded dataset: {df.shape}"
+    )
+
+    validate_required_columns(
+        df
+    )
+
+    validate_target(
+        df
+    )
+
+    df = convert_datetime_columns(
+        df
+    )
+
+    df["Vehicle_condition"] = (
+        df["Vehicle_condition"]
+        .astype("category")
+    )
+
+    df = create_temporal_features(
+        df
+    )
+
+    df = create_distance_feature(
+        df
+    )
+
+    validate_distance_feature(
+        df
+    )
+
+    df = drop_raw_columns(
+        df
+    )
+
+    validate_no_raw_columns(
+        df
+    )
+
+    validate_engineered_features(
+        df
+    )
+
+    validate_final_missing_values(
+        df
+    )
+
+    validate_feature_groups(
+        df
+    )
+
+    X, y = split_features_and_target(
+        df
+    )
+
+    final_audit(
+        df=df,
+        X=X,
+        y=y,
+    )
+
+    save_feature_engineered_data(
+        df=df,
+        output_path=OUTPUT_PATH,
+    )
+
+    print(
+        "\nFeature engineering completed successfully."
+    )
+
+
+if __name__ == "__main__":
+    feature_engineering_pipeline()
