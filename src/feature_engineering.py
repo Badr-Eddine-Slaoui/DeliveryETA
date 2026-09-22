@@ -345,3 +345,177 @@ def validate_distance_feature(
         raise ValueError(
             "Distance_km contains negative values."
         )
+
+
+def drop_raw_columns(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+
+    df = df.copy()
+
+    return df.drop(
+        columns=(
+            RAW_GPS_COLUMNS
+            + RAW_DATETIME_COLUMNS
+        ),
+        errors="ignore",
+    )
+
+
+def validate_no_raw_columns(
+    df: pd.DataFrame,
+) -> None:
+
+    raw_columns_present = [
+        column
+        for column in (
+            RAW_GPS_COLUMNS
+            + RAW_DATETIME_COLUMNS
+        )
+        if column in df.columns
+    ]
+
+    if raw_columns_present:
+        raise ValueError(
+            "Raw GPS or datetime columns detected: "
+            f"{raw_columns_present}"
+        )
+
+
+def validate_engineered_features(
+    df: pd.DataFrame,
+) -> None:
+
+    missing_features = [
+        feature
+        for feature in NEW_FEATURES
+        if feature not in df.columns
+    ]
+
+    if missing_features:
+        raise ValueError(
+            "Expected engineered features are missing: "
+            f"{missing_features}"
+        )
+
+
+def validate_final_missing_values(
+    df: pd.DataFrame,
+) -> None:
+
+    missing = (
+        df.isna()
+        .sum()
+    )
+
+    unexpected_missing = {
+        column: int(count)
+        for column, count in missing.items()
+        if count > 0
+    }
+
+    if unexpected_missing:
+        raise ValueError(
+            "Missing values detected in final dataset: "
+            f"{unexpected_missing}"
+        )
+
+    if df[TARGET].isna().any():
+        raise ValueError(
+            f"Target '{TARGET}' contains missing values."
+        )
+
+
+def get_feature_groups() -> Tuple[
+    list[str],
+    list[str],
+    list[str],
+]:
+
+    return (
+        NUMERIC_FEATURES.copy(),
+        CATEGORICAL_FEATURES.copy(),
+        BINARY_FEATURES.copy(),
+    )
+
+
+def validate_feature_groups(
+    df: pd.DataFrame,
+) -> None:
+
+    (
+        numeric_features,
+        categorical_features,
+        binary_features,
+    ) = get_feature_groups()
+
+    feature_groups = {
+        "numeric": numeric_features,
+        "categorical": categorical_features,
+        "binary": binary_features,
+    }
+
+    all_features = []
+
+    for group_name, features in feature_groups.items():
+
+        missing = [
+            feature
+            for feature in features
+            if feature not in df.columns
+        ]
+
+        if missing:
+            raise ValueError(
+                f"Missing {group_name} features: {missing}"
+            )
+
+        all_features.extend(features)
+
+    duplicated_features = [
+        feature
+        for feature in set(all_features)
+        if all_features.count(feature) > 1
+    ]
+
+    if duplicated_features:
+        raise ValueError(
+            "Features appear in multiple groups: "
+            f"{duplicated_features}"
+        )
+
+    model_features = [
+        column
+        for column in df.columns
+        if column != TARGET
+    ]
+
+    unclassified_features = sorted(
+        set(model_features)
+        - set(all_features)
+    )
+
+    if unclassified_features:
+        raise ValueError(
+            "Some model features are not assigned "
+            "to a feature group: "
+            f"{unclassified_features}"
+        )
+
+
+def split_features_and_target(
+    df: pd.DataFrame,
+) -> Tuple[pd.DataFrame, pd.Series]:
+
+    X = df.drop(
+        columns=[TARGET]
+    ).copy()
+
+    y = df[TARGET].copy()
+
+    if TARGET in X.columns:
+        raise ValueError(
+            "Target must not be present in X."
+        )
+
+    return X, y
