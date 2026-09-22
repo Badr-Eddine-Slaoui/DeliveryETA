@@ -265,3 +265,83 @@ def create_temporal_features(
     )
 
     return df
+
+
+def haversine_distance_km(
+    latitude_1: pd.Series,
+    longitude_1: pd.Series,
+    latitude_2: pd.Series,
+    longitude_2: pd.Series,
+) -> pd.Series:
+
+    earth_radius_km = 6371.0
+
+    lat1 = np.radians(latitude_1)
+    lon1 = np.radians(longitude_1)
+
+    lat2 = np.radians(latitude_2)
+    lon2 = np.radians(longitude_2)
+
+    delta_lat = lat2 - lat1
+    delta_lon = lon2 - lon1
+
+    a = (
+        np.sin(delta_lat / 2) ** 2
+        + np.cos(lat1)
+        * np.cos(lat2)
+        * np.sin(delta_lon / 2) ** 2
+    )
+
+    a = np.clip(a, 0, 1)
+
+    c = 2 * np.arctan2(
+        np.sqrt(a),
+        np.sqrt(1 - a),
+    )
+
+    return earth_radius_km * c
+
+
+def create_distance_feature(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+
+    df = df.copy()
+
+    df["Distance_km"] = haversine_distance_km(
+        latitude_1=df["Restaurant_latitude"],
+        longitude_1=df["Restaurant_longitude"],
+        latitude_2=df["Delivery_location_latitude"],
+        longitude_2=df["Delivery_location_longitude"],
+    )
+
+    return df
+
+
+def validate_distance_feature(
+    df: pd.DataFrame,
+) -> None:
+
+    if "Distance_km" not in df.columns:
+        raise ValueError(
+            "Distance_km was not created."
+        )
+
+    if df["Distance_km"].isna().any():
+        raise ValueError(
+            "Distance_km contains missing values."
+        )
+
+    if not np.isfinite(
+        df["Distance_km"]
+    ).all():
+        raise ValueError(
+            "Distance_km contains non-finite values."
+        )
+
+    if (
+        df["Distance_km"] < 0
+    ).any():
+        raise ValueError(
+            "Distance_km contains negative values."
+        )
