@@ -121,3 +121,147 @@ OUTPUT_PATH = (
     / "processed"
     / OUTPUT_FILENAME
 )
+
+
+def load_cleaned_data(
+    input_path: Path,
+) -> pd.DataFrame:
+
+    if not input_path.exists():
+        raise FileNotFoundError(
+            f"Input dataset not found: {input_path}"
+        )
+
+    df = pd.read_csv(input_path)
+
+    if df.empty:
+        raise ValueError(
+            "The input dataset is empty."
+        )
+
+    return df
+
+
+def validate_required_columns(
+    df: pd.DataFrame,
+) -> None:
+
+    missing_columns = [
+        column
+        for column in REQUIRED_INPUT_COLUMNS
+        if column not in df.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Required columns are missing: {missing_columns}"
+        )
+
+
+def validate_target(
+    df: pd.DataFrame,
+) -> None:
+
+    if TARGET not in df.columns:
+        raise ValueError(
+            f"Target column '{TARGET}' is missing."
+        )
+
+    if df[TARGET].isna().any():
+        raise ValueError(
+            f"Target '{TARGET}' contains missing values."
+        )
+
+
+def convert_datetime_columns(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+
+    df = df.copy()
+
+    for column in RAW_DATETIME_COLUMNS:
+        df[column] = pd.to_datetime(
+            df[column],
+            errors="coerce",
+        )
+
+    invalid_datetime_values = {
+        column: int(df[column].isna().sum())
+        for column in RAW_DATETIME_COLUMNS
+        if df[column].isna().any()
+    }
+
+    if invalid_datetime_values:
+        raise ValueError(
+            "Invalid or missing datetime values detected: "
+            f"{invalid_datetime_values}"
+        )
+
+    return df
+
+
+def create_temporal_features(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+
+    df = df.copy()
+
+    df["Order_Hour"] = (
+        df["Time_Orderd"]
+        .dt.hour
+        .astype("int8")
+    )
+
+    df["Order_Day"] = (
+        df["Order_Date"]
+        .dt.day
+        .astype("int8")
+    )
+
+    df["Order_Month"] = (
+        df["Order_Date"]
+        .dt.month
+        .astype("int8")
+    )
+
+    df["Order_DayOfWeek"] = (
+        df["Order_Date"]
+        .dt.dayofweek
+        .astype("int8")
+    )
+
+    df["Is_Weekend"] = (
+        df["Order_DayOfWeek"]
+        .isin([5, 6])
+        .astype("int8")
+    )
+
+    df["Pickup_Hour"] = (
+        df["Time_Order_picked"]
+        .dt.hour
+        .astype("int8")
+    )
+
+    order_minutes = (
+        df["Time_Orderd"].dt.hour * 60
+        + df["Time_Orderd"].dt.minute
+        + df["Time_Orderd"].dt.second / 60
+    )
+
+    pickup_minutes = (
+        df["Time_Order_picked"].dt.hour * 60
+        + df["Time_Order_picked"].dt.minute
+        + df["Time_Order_picked"].dt.second / 60
+    )
+
+    preparation_time = (
+        pickup_minutes - order_minutes
+    ) % (24 * 60)
+
+    df["Preparation_Time_min"] = (
+        preparation_time
+        .round()
+        .astype("float32")
+    )
+
+    return df
