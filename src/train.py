@@ -103,3 +103,123 @@ def engineer_features(df):
     df = add_cyclical_features(df)
     df = cap_distance_outliers(df)
     return df
+
+
+def get_feature_lists():
+    numeric_features = [
+        "Delivery_person_Age",
+        "Delivery_person_Ratings",
+        "multiple_deliveries",
+        "Distance_km",
+        "Order_Day",
+        "Preparation_Time_min",
+        "Vehicle_condition",
+        "Traffic_Level",
+        "Distance_x_Traffic",
+        "Distance_per_Delivery",
+        "Prep_to_Distance_Ratio",
+        "Order_Hour_sin",
+        "Order_Hour_cos",
+        "Order_Hour_sin2",
+        "Order_Hour_cos2",
+        "Pickup_Hour_sin",
+        "Pickup_Hour_cos",
+        "Pickup_Hour_sin2",
+        "Pickup_Hour_cos2",
+        "Order_DayOfWeek_sin",
+        "Order_DayOfWeek_cos",
+        "Order_Month_sin",
+        "Order_Month_cos",
+    ]
+
+    categorical_features = [
+        "Weatherconditions",
+        "Type_of_order",
+        "Type_of_vehicle",
+        "Festival",
+        "City",
+        "Order_Hour",
+        "Order_Month",
+        "Order_DayOfWeek",
+        "Pickup_Hour",
+    ]
+
+    binary_features = [
+        "Is_Weekend",
+        "Is_Rush_Hour",
+    ]
+
+    all_features = numeric_features + categorical_features + binary_features
+
+    return numeric_features, categorical_features, binary_features, all_features
+
+
+def split_features_target(df, all_features, target=TARGET):
+    X = df[all_features].copy()
+    y = df[target].copy()
+    return X, y
+
+
+def split_train_test(X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE):
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state
+    )
+    return X_train, X_test, y_train, y_test
+
+
+def build_hist_preprocessor(numeric_features, categorical_features, binary_features):
+    numeric_pipeline = Pipeline(steps=[
+        ("imputer", SimpleImputer(strategy="median")),
+    ])
+
+    categorical_pipeline = Pipeline(steps=[
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("encoder", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)),
+    ])
+
+    binary_pipeline = Pipeline(steps=[
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+    ])
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numeric_pipeline, numeric_features),
+            ("cat", categorical_pipeline, categorical_features),
+            ("bin", binary_pipeline, binary_features),
+        ],
+        remainder="drop",
+    )
+
+    return preprocessor
+
+
+def build_categorical_mask(numeric_features, categorical_features, binary_features):
+    mask = (
+        [False] * len(numeric_features)
+        + [True] * len(categorical_features)
+        + [False] * len(binary_features)
+    )
+    return mask
+
+
+def build_model(categorical_mask, params=BEST_PARAMS, random_state=RANDOM_STATE):
+    model = HistGradientBoostingRegressor(
+        random_state=random_state,
+        categorical_features=categorical_mask,
+        learning_rate=params["learning_rate"],
+        max_iter=params["max_iter"],
+        max_leaf_nodes=params["max_leaf_nodes"],
+        max_depth=params["max_depth"],
+        min_samples_leaf=params["min_samples_leaf"],
+        l2_regularization=params["l2_regularization"],
+        max_bins=params["max_bins"],
+    )
+    return model
+
+
+def build_pipeline(preprocessor, model):
+    pipeline = Pipeline(steps=[
+        ("preprocessor", preprocessor),
+        ("model", model),
+    ])
+    return pipeline
