@@ -223,3 +223,96 @@ def build_pipeline(preprocessor, model):
         ("model", model),
     ])
     return pipeline
+
+
+def adjusted_r2(r2, n, p):
+    if n <= p + 1:
+        return np.nan
+    return 1 - ((1 - r2) * (n - 1) / (n - p - 1))
+
+
+def evaluate_pipeline(pipeline, X_train, y_train, X_test, y_test):
+    y_train_pred = pipeline.predict(X_train)
+    y_test_pred = pipeline.predict(X_test)
+
+    X_train_transformed = pipeline.named_steps["preprocessor"].transform(X_train)
+    p = X_train_transformed.shape[1]
+
+    train_r2 = r2_score(y_train, y_train_pred)
+    test_r2 = r2_score(y_test, y_test_pred)
+
+    train_mse = mean_squared_error(y_train, y_train_pred)
+    test_mse = mean_squared_error(y_test, y_test_pred)
+
+    metrics = {
+        "Train_MAE": mean_absolute_error(y_train, y_train_pred),
+        "Test_MAE": mean_absolute_error(y_test, y_test_pred),
+        "Train_MSE": train_mse,
+        "Test_MSE": test_mse,
+        "Train_RMSE": float(np.sqrt(train_mse)),
+        "Test_RMSE": float(np.sqrt(test_mse)),
+        "Train_R2": train_r2,
+        "Test_R2": test_r2,
+        "Train_Adjusted_R2": adjusted_r2(train_r2, len(y_train), p),
+        "Test_Adjusted_R2": adjusted_r2(test_r2, len(y_test), p),
+        "n_features_after_encoding": p,
+    }
+
+    return metrics
+
+
+def save_pipeline(pipeline, model_path=FINAL_MODEL_PATH):
+    joblib.dump(pipeline, model_path)
+
+
+def save_metadata(metrics, all_features, params=BEST_PARAMS, metadata_path=FINAL_METADATA_PATH, random_state=RANDOM_STATE):
+    metadata = {
+        "model_name": "HistGradientBoostingRegressor",
+        "optimization_method": "RandomizedSearchCV + GridSearchCV (offline)",
+        "best_hyperparameters": params,
+        "features": all_features,
+        "target": TARGET,
+        "metrics": {
+            "test_mae_min": float(metrics["Test_MAE"]),
+            "test_rmse_min": float(metrics["Test_RMSE"]),
+            "test_r2": float(metrics["Test_R2"]),
+            "test_adjusted_r2": float(metrics["Test_Adjusted_R2"]),
+            "train_rmse_min": float(metrics["Train_RMSE"]),
+            "train_r2": float(metrics["Train_R2"]),
+            "rmse_gap_min": float(metrics["Test_RMSE"] - metrics["Train_RMSE"]),
+            "r2_gap": float(metrics["Train_R2"] - metrics["Test_R2"]),
+        },
+        "random_state": random_state,
+    }
+
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=4, ensure_ascii=False)
+
+
+def training_pipeline(data_path=DATA_PATH):
+    df = load_data(data_path)
+    df = engineer_features(df)
+
+    numeric_features, categorical_features, binary_features, all_features = get_feature_lists()
+
+    X, y = split_features_target(df, all_features)
+    X_train, X_test, y_train, y_test = split_train_test(X, y)
+
+    preprocessor = build_hist_preprocessor(numeric_features, categorical_features, binary_features)
+    categorical_mask = build_categorical_mask(numeric_features, categorical_features, binary_features)
+    model = build_model(categorical_mask)
+    pipeline = build_pipeline(preprocessor, model)
+
+    pipeline.fit(X_train, y_train)
+
+    metrics = evaluate_pipeline(pipeline, X_train, y_train, X_test, y_test)
+
+    save_pipeline(pipeline)
+    save_metadata(metrics, all_features)
+
+    return pipeline, metrics
+
+
+if __name__ == "__main__":
+    trained_pipeline, final_metrics = training_pipeline()
+    print(final_metrics)
