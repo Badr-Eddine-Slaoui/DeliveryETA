@@ -9,6 +9,7 @@ RUSH_HOURS = {12, 13, 14, 19, 20, 21}
 AGE_CLIP_MIN, AGE_CLIP_MAX = 20, 40
 
 
+
 def haversine_distance_km(
     lat1: float, lon1: float, lat2: float, lon2: float
 ) -> float:
@@ -115,3 +116,43 @@ def compute_cyclical_features(
 
 def clip_age(age: int) -> int:
     return int(np.clip(age, AGE_CLIP_MIN, AGE_CLIP_MAX))
+
+
+def build_feature_row(request: DeliveryPredictionRequest) -> pd.DataFrame:
+    distance_km = resolve_distance_km(request)
+
+    temporal = compute_temporal_features(request)
+    traffic_level = compute_traffic_level(request.road_traffic_density.value)
+    interactions = compute_interaction_features(
+        distance_km=distance_km,
+        traffic_level=traffic_level,
+        multiple_deliveries=request.multiple_deliveries,
+        preparation_time_min=temporal["Preparation_Time_min"],
+    )
+    is_rush_hour = compute_rush_hour(temporal["Order_Hour"])
+    cyclical = compute_cyclical_features(
+        order_hour=temporal["Order_Hour"],
+        pickup_hour=temporal["Pickup_Hour"],
+        day_of_week=temporal["Order_DayOfWeek"],
+        month=temporal["Order_Month"],
+    )
+
+    row = {
+        "Delivery_person_Age": clip_age(request.delivery_person_age),
+        "Delivery_person_Ratings": request.delivery_person_ratings,
+        "multiple_deliveries": request.multiple_deliveries,
+        "Vehicle_condition": request.vehicle_condition,
+        "Weatherconditions": request.weather_conditions.value,
+        "Type_of_order": request.type_of_order.value,
+        "Type_of_vehicle": request.type_of_vehicle.value,
+        "Festival": request.festival.value,
+        "City": request.city.value,
+        "Distance_km": distance_km,
+        **temporal,
+        "Traffic_Level": traffic_level,
+        **interactions,
+        "Is_Rush_Hour": is_rush_hour,
+        **cyclical,
+    }
+
+    return pd.DataFrame([row])
