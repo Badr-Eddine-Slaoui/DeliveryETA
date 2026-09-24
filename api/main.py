@@ -70,3 +70,63 @@ def get_pipeline():
 
 def get_metadata() -> dict:
     return ml_resources.get("metadata") or {}
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return {"message": "Food Delivery Time Prediction API — see /docs"}
+
+
+@app.get("/health", response_model=HealthResponse)
+def health():
+    return HealthResponse(
+        status="ok",
+        model_loaded=ml_resources.get("pipeline") is not None,
+    )
+
+
+@app.get("/model-info", response_model=ModelInfoResponse)
+def model_info():
+    metadata = get_metadata()
+    if not metadata:
+        raise HTTPException(status_code=404, detail="No metadata file found.")
+
+    return ModelInfoResponse(
+        model_name=metadata.get("model_name", "unknown"),
+        features=metadata.get("features", []),
+        metrics=metadata.get("metrics", {}),
+    )
+
+
+@app.post("/predict", response_model=DeliveryPredictionResponse)
+def predict(request: DeliveryPredictionRequest):
+    pipeline = get_pipeline()
+    metadata = get_metadata()
+
+    try:
+        features_df = build_feature_row(request)
+        prediction = pipeline.predict(features_df)[0]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not compute a prediction from the given input: {exc}",
+        ) from exc
+
+    predicted_time_min = round(float(prediction), 1)
+
+    mae = metadata.get("metrics", {}).get("test_mae_min", 0.0)
+    predicted_range = (
+        round(predicted_time_min - mae, 1),
+        round(predicted_time_min + mae, 1),
+    )
+
+    return DeliveryPredictionResponse(
+        predicted_time_min=predicted_time_min,
+        predicted_time_range_min=predicted_range,
+        computed_distance_km=round(float(features_df["Distance_km"].iloc[0]), 2),
+        computed_preparation_time_min=float(
+            features_df["Preparation_Time_min"].iloc[0]
+        ),
+        model_name=metadata.get("model_name", "HistGradientBoostingRegressor"),
+        model_version="1.0.0",
+    )
