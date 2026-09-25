@@ -1,0 +1,70 @@
+services:
+  python:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: weather-python
+    restart: unless-stopped
+
+    working_dir: /opt/project
+
+    volumes:
+      - .:/opt/project
+
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /opt/project
+
+    command: ["tail", "-f", "/dev/null"]
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: fastapi
+    restart: unless-stopped
+
+    working_dir: /opt/project
+
+    volumes:
+      - .:/opt/project
+
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /opt/project
+
+    ports:
+      - "${FASTAPI_PORT}:8000"
+
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: streamlit
+    restart: unless-stopped
+
+    working_dir: /opt/project
+
+    volumes:
+      - .:/opt/project
+
+    environment:
+      PYTHONUNBUFFERED: "1"
+      PYTHONPATH: /opt/project
+
+    ports:
+      - "${STREAMLIT_PORT}:8501"
+
+    command:
+      [
+        "streamlit",
+        "run",
+        "app/main.py",
+        "--server.address=0.0.0.0",
+        "--server.port=8501",
+      ]
