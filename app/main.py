@@ -103,3 +103,40 @@ with tab1:
                 st.error(response.json().get("detail", "Erreur lors de la prédiction"))
         except requests.exceptions.ConnectionError:
             st.error(f"Impossible de contacter l'API. Vérifiez qu'elle est lancée sur {API_URL}.")
+
+with tab2:
+    df = load_data()
+
+    st.plotly_chart(px.histogram(df, x="Time_taken(min)", nbins=30, title="Distribution du temps de livraison"))
+
+    st.plotly_chart(px.box(df, x="Road_traffic_density", y="Time_taken(min)", title="Temps de livraison selon le trafic"))
+
+    st.plotly_chart(px.box(df, x="Weatherconditions", y="Time_taken(min)", title="Temps de livraison selon la météo"))
+
+    st.plotly_chart(px.scatter(df, x="Distance_km", y="Time_taken(min)", title="Temps de livraison selon la distance"))
+
+    st.plotly_chart(px.box(df, x="City", y="Time_taken(min)", title="Temps de livraison selon le type de ville"))
+
+with tab3:
+    metadata = load_metadata()
+    metrics = metadata["metrics"]
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("MAE (test)", f"{metrics['test_mae_min']:.2f} min")
+    col2.metric("RMSE (test)", f"{metrics['test_rmse_min']:.2f} min")
+    col3.metric("R² (test)", f"{metrics['test_r2']:.3f}")
+    col4.metric("R² ajusté (test)", f"{metrics['test_adjusted_r2']:.3f}")
+
+    st.write(f"Le modèle {metadata['model_name']} se trompe en moyenne de {metrics['test_mae_min']:.1f} minutes sur des données jamais vues.")
+
+    comparison_df = pd.DataFrame({
+        "Ensemble": ["Entraînement", "Test"],
+        "RMSE (min)": [metrics["train_rmse_min"], metrics["test_rmse_min"]],
+        "R²": [metrics["train_r2"], metrics["test_r2"]],
+    })
+
+    st.plotly_chart(px.bar(comparison_df, x="Ensemble", y="RMSE (min)", title="RMSE entraînement vs test"))
+    st.plotly_chart(px.bar(comparison_df, x="Ensemble", y="R²", title="R² entraînement vs test"))
+
+    st.write(f"Écart RMSE train/test : {metrics['rmse_gap_min']:.2f} min")
+    st.write(f"Écart R² train/test : {metrics['r2_gap']:.3f}")
