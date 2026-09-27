@@ -1,14 +1,14 @@
 {
     "model_name": "HistGradientBoostingRegressor",
-    "optimization_method": "RandomizedSearchCV + GridSearchCV (offline)",
+    "optimization_method": "RandomizedSearchCV (80 iter) + GridSearchCV (243 combinaisons)",
     "best_hyperparameters": {
-        "learning_rate": 0.0762795063212169,
-        "max_iter": 623,
-        "max_leaf_nodes": 94,
-        "max_depth": 15,
-        "min_samples_leaf": 5,
         "l2_regularization": 2.98,
-        "max_bins": 207
+        "learning_rate": 0.0762795063212169,
+        "max_bins": 207.0,
+        "max_depth": 15.0,
+        "max_iter": 623.0,
+        "max_leaf_nodes": 94.0,
+        "min_samples_leaf": 5.0
     },
     "features": [
         "Delivery_person_Age",
@@ -48,6 +48,7 @@
     ],
     "target": "Time_taken(min)",
     "metrics": {
+        "cv_rmse_min": 3.902272350231553,
         "test_mae_min": 3.089264277571154,
         "test_rmse_min": 3.8784209126547293,
         "test_r2": 0.8311597949905541,
