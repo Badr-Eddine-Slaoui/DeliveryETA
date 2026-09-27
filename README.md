@@ -11,6 +11,7 @@ DeliveryETA is a machine-learning project that predicts the total delivery time 
 | Stage | What it does |
 |---|---|
 | **Data Cleaning** | Normalises types, imputes missing values, fixes GPS anomalies |
+| **EDA** | Univariate & bivariate analysis, Spearman correlation, temporal patterns |
 | **Feature Engineering** | Computes haversine distance, temporal/cyclical features and interaction terms |
 | **Model Training** | Trains a tuned `HistGradientBoostingRegressor` (offline hyperparameter search via `RandomizedSearchCV` + `GridSearchCV`) |
 | **REST API** | FastAPI service exposing `/predict`, `/health` and `/model-info` endpoints |
@@ -24,22 +25,30 @@ DeliveryETA is a machine-learning project that predicts the total delivery time 
 ```
 DeliveryETA/
 ├── src/
-│   ├── cleaning.py            # Data cleaning pipeline
-│   ├── feature_engineering.py # Feature extraction & validation pipeline
-│   └── train.py               # Model training & artefact persistence
+│   ├── cleaning.py                # Data cleaning pipeline
+│   ├── feature_engineering.py     # Feature extraction & validation pipeline
+│   └── train.py                   # Model training & artefact persistence
 ├── api/
-│   ├── main.py                # FastAPI application & endpoints
-│   ├── schemas.py             # Pydantic request/response models
-│   └── utils.py               # Inference-time feature computation
+│   ├── main.py                    # FastAPI application & endpoints
+│   ├── schemas.py                 # Pydantic request/response models
+│   └── utils.py                   # Inference-time feature computation
 ├── app/
-│   └── main.py                # Streamlit dashboard
+│   └── main.py                    # Streamlit dashboard
 ├── models/
 │   ├── hist_gradient_optimized_pipeline.joblib
 │   └── hist_gradient_optimized_metadata.json
+├── notebooks/
+│   ├── 01_cleaning.ipynb          # Data cleaning walkthrough
+│   ├── 02_eda.ipynb               # Exploratory data analysis
+│   ├── 03_feature_engineering.ipynb
+│   └── 04_modeling.ipynb          # Model selection & hyperparameter tuning
+├── reports/
+│   └── figures/
+│       ├── eda/                   # 18 EDA charts (PNG)
+│       └── feature_engineering/   # Distance distribution plot
 ├── data/
-│   ├── raw/                   # Original CSV (not tracked by git)
-│   └── processed/             # Cleaned & feature-engineered CSVs (not tracked)
-├── notebooks/                 # Exploratory analysis (not tracked)
+│   ├── raw/                       # Original CSV (not tracked by git)
+│   └── processed/                 # Cleaned & feature-engineered CSVs (not tracked)
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -142,6 +151,19 @@ Returns `{ "status": "ok", "model_loaded": true }`.
 ### `GET /model-info`
 
 Returns the model name, full feature list and test-set metrics from the metadata file.
+
+---
+
+## Notebooks & Reports
+
+| Notebook | Description |
+|---|---|
+| `01_cleaning.ipynb` | Interactive walkthrough of all cleaning steps with per-step QA checks |
+| `02_eda.ipynb` | Univariate/bivariate analysis, Spearman correlation matrix, temporal patterns |
+| `03_feature_engineering.ipynb` | Haversine distance derivation, temporal feature extraction, feature group validation |
+| `04_modeling.ipynb` | Baseline model, `RandomizedSearchCV` + `GridSearchCV` tuning, final evaluation |
+
+All figures exported during EDA and feature engineering are saved under `reports/figures/` as PNG files.
 
 ---
 
